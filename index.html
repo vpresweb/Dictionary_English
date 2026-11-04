@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dictionary English</title>
+  <meta name="description" content="Интерактивный англо-русский словарь">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Dictionary English</h1>
+    <p class="subtitle">Англо-русский словарь · нажмите на английское слово, чтобы его услышать</p>
+    <nav class="tabs" aria-label="Разделы">
+      <a href="#" data-view="dictionary">Словарь</a>
+      <a href="#cards" data-view="cards">Карточки</a>
+      <a href="#quiz" data-view="quiz">Тест</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="dictionary-view">
+      <form class="search" role="search" id="search-form">
+        <label for="search-input" class="visually-hidden">Поиск слова</label>
+        <div class="search-field">
+          <input id="search-input" type="search" autocomplete="off" autofocus
+                 placeholder="Слово на английском или русском">
+          <button type="button" id="search-clear" class="search-clear" aria-label="Очистить" title="Очистить" hidden>×</button>
+        </div>
+        <div class="search-mode" role="radiogroup" aria-label="Направление">
+          <label><input type="radio" name="mode" value="all" checked> Все</label>
+          <label><input type="radio" name="mode" value="en"> EN → RU</label>
+          <label><input type="radio" name="mode" value="ru"> RU → EN</label>
+        </div>
+      </form>
+
+      <p class="status" id="status" aria-live="polite"></p>
+      <ul class="results" id="results"></ul>
+    </section>
+
+    <section id="cards-view" hidden>
+      <div class="cards-controls">
+        <label>Направление
+          <select id="cards-direction">
+            <option value="en">EN → RU</option>
+            <option value="ru">RU → EN</option>
+          </select>
+        </label>
+        <label>Слова
+          <select id="cards-filter">
+            <option value="all">Все</option>
+            <option value="noun">Существительные</option>
+            <option value="verb">Глаголы</option>
+            <option value="adj">Прилагательные</option>
+            <option value="other">Остальные</option>
+          </select>
+        </label>
+        <label class="cards-autospeak">
+          <input type="checkbox" id="cards-autospeak" checked> Озвучивать при перевороте
+        </label>
+      </div>
+
+      <button class="card" id="card" type="button" aria-live="polite">
+        <span class="card-front" id="card-front"></span>
+        <span class="card-back" id="card-back"></span>
+      </button>
+      <p class="card-hint" id="card-hint">Нажмите на карточку или пробел, чтобы увидеть перевод</p>
+
+      <div class="card-actions">
+        <button type="button" id="card-unknown" class="unknown">← Не знаю</button>
+        <button type="button" id="card-known" class="known">Знаю →</button>
+      </div>
+
+      <p class="cards-stats" id="cards-stats"></p>
+      <button type="button" id="cards-reset" class="link-button">Сбросить прогресс</button>
+    </section>
+
+    <section id="quiz-view" hidden>
+      <details class="quiz-settings">
+        <summary>Настройки теста</summary>
+        <fieldset>
+          <legend>Формы</legend>
+          <div class="quiz-tenses" id="quiz-forms"></div>
+        </fieldset>
+        <div class="cards-controls">
+          <label>Глаголы
+            <select id="quiz-set">
+              <option value="irregular">Неправильные</option>
+              <option value="regular">Правильные</option>
+              <option value="all">Все</option>
+            </select>
+          </label>
+          <label class="checkbox"><input type="checkbox" id="quiz-phrasal"> Фразовые глаголы</label>
+        </div>
+      </details>
+
+      <div class="quiz-card" id="quiz-question" aria-live="polite"></div>
+
+      <form class="quiz-form" id="quiz-form" autocomplete="off">
+        <label for="quiz-input" class="visually-hidden">Форма глагола</label>
+        <input id="quiz-input" type="text" lang="en" spellcheck="false" autocapitalize="off" autocorrect="off"
+               placeholder="Введите форму глагола">
+        <div class="card-actions">
+          <button type="button" id="quiz-reveal">Показать ответ</button>
+          <button type="submit" id="quiz-submit" class="known">Проверить</button>
+        </div>
+      </form>
+
+      <p class="quiz-feedback" id="quiz-feedback" aria-live="polite"></p>
+      <p class="cards-stats" id="quiz-score"></p>
+      <button type="button" id="quiz-reset" class="link-button">Сбросить счёт</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p class="speech-note" id="speech-note" hidden>
+      В системе не найден голос для английского языка, слова прочитает голос по умолчанию.
+      Английский голос можно установить в настройках речи Windows.
+    </p>
+    <a href="https://github.com/vpresweb/Dictionary_English">GitHub</a>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

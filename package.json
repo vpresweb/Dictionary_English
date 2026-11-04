@@ -1,0 +1,13 @@
+{
+  "name": "dictionary-english",
+  "private": true,
+  "description": "Интерактивный англо-русский словарь",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
