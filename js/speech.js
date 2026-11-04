@@ -4,8 +4,13 @@
 
 const PREFERRED_LANGS = ['en-gb', 'en-us'];
 
+// Если фраза не начала звучать за это время, синтезатор считается зависшим.
+const START_TIMEOUT = 2000;
+
 let voice = null;
-let current = null;
+// Текущая фраза: { text, started, ended }. Ссылка на неё ещё и не даёт сборщику мусора
+// удалить utterance — иначе Chrome не присылает end и считает, что речь продолжается.
+let active = null;
 
 const supported = () => 'speechSynthesis' in window;
 const langOf = (v) => v.lang.replace('_', '-').toLowerCase();
@@ -19,30 +24,51 @@ function pickVoice() {
   return voices.find((v) => langOf(v).startsWith('en')) ?? null;
 }
 
-export function speak(text, element) {
+// retry — повторная попытка после сбоя: сетевые голоса Chrome (Google …) иногда молча
+// не отвечают, тогда синтезатор сбрасывается и фраза отправляется ещё раз.
+export function speak(text, element, retry = false) {
   if (!supported() || !text) return;
   voice ??= pickVoice();
-  // cancel() в Chrome задерживает следующую фразу почти на секунду, поэтому вызываем его только
-  // если звучит другой текст; тот же текст просто дозвучивает.
+  // cancel() в Chrome задерживает следующую фразу почти на секунду, поэтому тот же текст,
+  // который уже звучит, просто дозвучивает. Флаг speaking может «залипнуть» после сбоя,
+  // поэтому смотрим на события самой фразы, а не только на него.
+  if (active && active.text === text && active.started && !active.ended && speechSynthesis.speaking) return;
+  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
   // resume() снимает «залипшую» паузу синтезатора после простоя.
-  if (speechSynthesis.speaking || speechSynthesis.pending) {
-    if (text === current) return;
-    speechSynthesis.cancel();
-  }
   speechSynthesis.resume();
-  current = text;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = voice?.lang ?? 'en-GB';
   if (voice) utterance.voice = voice;
   utterance.rate = 0.9;
 
-  if (element) {
-    element.classList.add('speaking');
-    const done = () => element.classList.remove('speaking');
-    utterance.addEventListener('end', done);
-    utterance.addEventListener('error', done);
-  }
+  const state = { text, element, utterance, started: false, ended: false };
+  active = state;
+  if (element) element.classList.add('speaking');
+  const finish = () => {
+    state.ended = true;
+    // Подсветку не снимаем, если тот же элемент уже озвучивается новой фразой.
+    if (element && (active === state || active.element !== element)) element.classList.remove('speaking');
+  };
+  const again = () => {
+    if (retry || active !== state) return;
+    speechSynthesis.cancel();
+    speak(text, element, true);
+  };
+
+  utterance.addEventListener('start', () => { state.started = true; });
+  utterance.addEventListener('end', finish);
+  utterance.addEventListener('error', (event) => {
+    finish();
+    // interrupted и canceled — это наш собственный cancel(), а не сбой.
+    if (event.error !== 'interrupted' && event.error !== 'canceled') again();
+  });
+  setTimeout(() => {
+    if (state.started || state.ended) return;
+    finish();
+    again();
+  }, START_TIMEOUT);
+
   speechSynthesis.speak(utterance);
 }
 
