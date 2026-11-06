@@ -70,7 +70,8 @@ export function initCards(entries, root) {
   // Ключ — слово и часть речи: у омонимов (work — глагол и существительное) прогресс раздельный.
   const id = (entry) => `${entry.word}|${entry.pos}`;
   const box = (entry) => progress[id(entry)] ?? 0;
-  const pool = () => entries.filter((e) => matchesFilter(e, filterSelect.value));
+  // Статьи расширенного словаря (extra) в карточки не попадают: там в основном редкая лексика.
+  const pool = () => entries.filter((e) => !e.extra && matchesFilter(e, filterSelect.value));
 
   function pick() {
     const candidates = pool().filter((e) => e !== current);

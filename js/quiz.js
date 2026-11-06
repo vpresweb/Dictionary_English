@@ -16,7 +16,7 @@ export function isIrregular(entry) {
 
 // phrasal — включать ли фразовые глаголы (get up, look for).
 export function filterVerbs(entries, set, phrasal = false) {
-  const verbs = entries.filter((e) => e.pos === 'verb' && (phrasal || !e.word.includes(' ')));
+  const verbs = entries.filter((e) => e.pos === 'verb' && !e.extra && (phrasal || !e.word.includes(' ')));
   if (set === 'irregular') return verbs.filter(isIrregular);
   if (set === 'regular') return verbs.filter((e) => !isIrregular(e));
   return verbs;
