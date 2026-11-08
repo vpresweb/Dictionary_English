@@ -5,23 +5,45 @@
 const PREFERRED_LANGS = ['en-gb', 'en-us'];
 
 // Если фраза не начала звучать за это время, синтезатор считается зависшим.
-const START_TIMEOUT = 2000;
+// Сетевым голосам (Google …) нужно больше: первый запрос к серверу идёт 2–4 секунды.
+const START_TIMEOUT_LOCAL = 2000;
+const START_TIMEOUT_NETWORK = 5000;
+// Chrome молча теряет фразу, отправленную сразу после cancel() (проверено с голосами Google):
+// новая фраза уходит с небольшой паузой.
+const CANCEL_GAP = 120;
 
 let voice = null;
 // Текущая фраза: { text, started, ended }. Ссылка на неё ещё и не даёт сборщику мусора
 // удалить utterance — иначе Chrome не присылает end и считает, что речь продолжается.
 let active = null;
+let pendingTimer = null;
 
 const supported = () => 'speechSynthesis' in window;
 const langOf = (v) => v.lang.replace('_', '-').toLowerCase();
 
+// Локальный голос надёжнее сетевого: отвечает сразу и без интернета.
 function pickVoice() {
   const voices = speechSynthesis.getVoices();
-  for (const lang of PREFERRED_LANGS) {
-    const found = voices.find((v) => langOf(v) === lang);
-    if (found) return found;
+  const candidates = [...PREFERRED_LANGS.map((lang) => (v) => langOf(v) === lang), (v) => langOf(v).startsWith('en')];
+  for (const local of [true, false]) {
+    for (const matches of candidates) {
+      const found = voices.find((v) => matches(v) && Boolean(v.localService) === local);
+      if (found) return found;
+    }
   }
-  return voices.find((v) => langOf(v).startsWith('en')) ?? null;
+  return null;
+}
+
+// Если синтезатор занят, прерываем его и отправляем фразу после паузы CANCEL_GAP.
+// При быстрых нажатиях прозвучит последняя фраза.
+function cancelThen(run) {
+  clearTimeout(pendingTimer);
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+    pendingTimer = setTimeout(run, CANCEL_GAP);
+  } else {
+    run();
+  }
 }
 
 // retry — повторная попытка после сбоя: сетевые голоса Chrome (Google …) иногда молча
@@ -29,11 +51,13 @@ function pickVoice() {
 export function speak(text, element, retry = false) {
   if (!supported() || !text) return;
   voice ??= pickVoice();
-  // cancel() в Chrome задерживает следующую фразу почти на секунду, поэтому тот же текст,
-  // который уже звучит, просто дозвучивает. Флаг speaking может «залипнуть» после сбоя,
-  // поэтому смотрим на события самой фразы, а не только на него.
+  // Тот же текст, который уже звучит, просто дозвучивает. Флаг speaking может «залипнуть»
+  // после сбоя, поэтому смотрим на события самой фразы, а не только на него.
   if (active && active.text === text && active.started && !active.ended && speechSynthesis.speaking) return;
-  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+  cancelThen(() => say(text, element, retry));
+}
+
+function say(text, element, retry) {
   // resume() снимает «залипшую» паузу синтезатора после простоя.
   speechSynthesis.resume();
 
@@ -52,8 +76,10 @@ export function speak(text, element, retry = false) {
   };
   const again = () => {
     if (retry || active !== state) return;
+    active = null;
+    clearTimeout(pendingTimer);
     speechSynthesis.cancel();
-    speak(text, element, true);
+    pendingTimer = setTimeout(() => say(text, element, true), CANCEL_GAP);
   };
 
   utterance.addEventListener('start', () => { state.started = true; });
@@ -67,7 +93,7 @@ export function speak(text, element, retry = false) {
     if (state.started || state.ended) return;
     finish();
     again();
-  }, START_TIMEOUT);
+  }, voice && !voice.localService ? START_TIMEOUT_NETWORK : START_TIMEOUT_LOCAL);
 
   speechSynthesis.speak(utterance);
 }
